@@ -6,6 +6,7 @@ Request Replay Tool - Capture and replay HTTP requests for testing and debugging
 import argparse
 import json
 import os
+import socket
 import sys
 import time
 from datetime import datetime
@@ -133,7 +134,7 @@ def load_captures(filepath: str) -> List[Dict[str, Any]]:
     return [data]
 
 
-def replay_request(request_data: Dict[str, Any], target_url: str, dry_run: bool = False) -> Dict[str, Any]:
+def replay_request(request_data: Dict[str, Any], target_url: str, dry_run: bool = False, timeout: float = 30.0) -> Dict[str, Any]:
     original_path = request_data.get("path", "/")
     if target_url:
         if target_url.endswith("/"):
@@ -171,7 +172,7 @@ def replay_request(request_data: Dict[str, Any], target_url: str, dry_run: bool 
             data = body.encode("utf-8")
 
         start_time = time.time()
-        response = urllib.request.urlopen(req, data=data, timeout=30)
+        response = urllib.request.urlopen(req, data=data, timeout=timeout)
         elapsed_ms = (time.time() - start_time) * 1000
 
         result["status"] = response.status
@@ -182,6 +183,8 @@ def replay_request(request_data: Dict[str, Any], target_url: str, dry_run: bool 
         result["error"] = str(e)
     except urllib.error.URLError as e:
         result["error"] = str(e.reason)
+    except socket.timeout as e:
+        result["error"] = f"Request timed out after {timeout}s"
     except Exception as e:
         result["error"] = str(e)
 
@@ -227,7 +230,7 @@ def show_capture_details(filepath: str) -> None:
         print()
 
 
-def run_replay(capture_file: str, target_url: Optional[str], dry_run: bool, delay: float) -> None:
+def run_replay(capture_file: str, target_url: Optional[str], dry_run: bool, delay: float, timeout: float) -> None:
     captures = load_captures(capture_file)
     print(f"Replaying {len(captures)} request(s)")
     if target_url:
@@ -241,7 +244,7 @@ def run_replay(capture_file: str, target_url: Optional[str], dry_run: bool, dela
     results: List[Dict[str, Any]] = []
     for i, req in enumerate(captures, 1):
         print(f"[{i}/{len(captures)}]", end=" ")
-        result = replay_request(req, target_url or "", dry_run)
+        result = replay_request(req, target_url or "", dry_run, timeout)
         results.append(result)
 
         if result.get("error"):
@@ -280,6 +283,8 @@ def main() -> None:
                                help="Show what would be replayed without sending")
     replay_parser.add_argument("--delay", type=float, default=0,
                                help="Delay between requests in seconds")
+    replay_parser.add_argument("--timeout", type=float, default=30.0,
+                               help="Request timeout in seconds (default: 30.0)")
 
     list_parser = subparsers.add_parser("list", help="List captured request files")
     list_parser.add_argument("-d", "--dir", type=str, default=DEFAULT_STORAGE_DIR,
@@ -293,7 +298,7 @@ def main() -> None:
     if args.command == "capture":
         start_capture_server(args.port, args.name, args.dir)
     elif args.command == "replay":
-        run_replay(args.file, args.target, args.dry_run, args.delay)
+        run_replay(args.file, args.target, args.dry_run, args.delay, args.timeout)
     elif args.command == "list":
         list_captures(args.dir)
     elif args.command == "show":
