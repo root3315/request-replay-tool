@@ -1,0 +1,5 @@
+# No external dependencies required
+# This tool uses only Python standard library modules:
+# - argparse, json, os, sys, time
+# - datetime, http.server, threading
+# - urllib.request, urllib.error
