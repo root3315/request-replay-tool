@@ -53,6 +53,7 @@ Options:
 - `-t, --target` - Target URL to replay requests to
 - `--dry-run` - Show what would be sent without actually sending
 - `--delay` - Add delay between requests in seconds (useful for rate-limited APIs)
+- `--timeout` - Request timeout in seconds (default: 30.0)
 
 If you don't specify a target, it defaults to `http://localhost:8080`.
 
@@ -102,5 +103,5 @@ You can manually edit these files if you need to tweak something before replayin
 
 - The capture server runs on 127.0.0.1 only (not exposed externally)
 - Host and Content-Length headers are stripped during replay (urllib handles these)
-- Requests timeout after 30 seconds during replay
+- Default request timeout is 30 seconds, configurable via `--timeout`
 - Capture files are appended to, so you can capture multiple batches into one file
